@@ -1,0 +1,96 @@
+#/!bin/sh
+
+init() {
+    require_git_repo
+    gitscrum_load_settings
+    PREFIX=$STORY_PREFIX
+}
+
+usage() {
+    echo "usage: git scrum story [list] [-v]"
+}
+
+cmd_list() {
+    DEFINE_boolean verbose false 'verbose (more) output' v
+    parse_args "$@"
+
+    local story_branches
+    local current_branch
+    local short_names
+    story_branches=$(echo "$(git_local_branches)" | grep "^$PREFIX")
+
+    # If there is no story branch
+    if [ -z "$story_branches" ]; then
+        warn "No story branches exist."
+        warn ""
+        warn "You can start a new story branch:"
+        warn ""
+        warn "    git flow story start <name>"
+        warn ""
+        exit 0
+    fi
+
+    current_branch=$(git branch --no-color | grep '^\* ' | grep -v 'no branch' | sed 's/^* //g')
+
+    # Remove the prefix of story
+    short_names=$(echo "$story_branches" | sed "s:^$PREFIX::g")
+
+    # Determine column width first
+    local width=0
+    local branch
+    for branch in $short_names; do
+        local len=${#branch}
+        width=$(max $width $len)
+    done
+    width=$(($width+3))
+
+    # Print the list
+    local branch
+    for branch in $short_names; do
+        local fullname=$PREFIX$branch
+        local base=$(git merge-base "$fullname" "$MASTER_BRANCH")
+        local master_sha=$(git rev-parse "$MASTER_BRANCH")
+        local branch_sha=$(git rev-parse "$fullname")
+
+        # Add a asterisk before the current branch
+        if [ "$fullname" = "$current_branch" ]; then
+            printf "* "
+        else
+            printf "  "
+        fi
+        if flag verbose; then
+            printf "%-${width}s" "$branch"
+            if [ "$branch_sha" = "$master_sha" ]; then
+                printf "(no commits yet)"
+            elif [ "$base" = "$branch_sha" ]; then
+                printf "(is behind master, may ff)"
+            elif [ "$base" = "$master_sha" ]; then
+                printf "(based on latest master)"
+            else
+                printf "(may be rebased)"
+            fi
+        else
+            printf "%s" "$branch"
+        fi
+        echo
+    done
+}
+
+cmd_help() {
+    usage
+    exit 0
+}
+
+cmd_default() {
+    cmd_list "$@"
+}
+
+parse_args() {
+    # Parse options
+    FLAGS "$@" || exit $?
+    eval set -- "${FLAGS_ARGV}"
+
+    # Read arguments into global variables
+    NAME=$1
+    BRANCH=$PREFIX$NAME
+}

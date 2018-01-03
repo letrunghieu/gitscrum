@@ -1,0 +1,44 @@
+#
+# Common functionality
+#
+
+# shell output
+warn() { echo "$@" >&2; }
+die() { warn "$@"; exit 1; }
+
+escape() {
+	echo "$1" | sed 's/\([\.\$\*]\)/\\\1/g'
+}
+
+# basic math
+min() { [ "$1" -le "$2" ] && echo "$1" || echo "$2"; }
+max() { [ "$1" -ge "$2" ] && echo "$1" || echo "$2"; }
+
+# convenience functions for checking shFlags flags
+flag() { local FLAG; eval FLAG='$FLAGS_'$1; [ $FLAG -eq $FLAGS_TRUE ]; }
+noflag() { local FLAG; eval FLAG='$FLAGS_'$1; [ $FLAG -ne $FLAGS_TRUE ]; }
+
+
+# loading settings that can be overridden using git config
+
+gitscrum_load_settings() {
+	export DOT_GIT_DIR=$(git rev-parse --git-dir 2>/dev/null)
+	export MASTER_BRANCH=$(echo master)
+	export ORIGIN=$(echo origin)
+	export STORY_PREFIX=$(echo feature/)
+}
+
+#
+# Git specific common functionality
+#
+git_local_branches() { git branch --no-color | sed 's/^[* ] //'; }
+
+#
+# Assertions for use in git-flow subcommands
+#
+
+require_git_repo() {
+	if ! git rev-parse --git-dir >/dev/null 2>&1; then
+		die "fatal: Not a git repository"
+	fi
+}

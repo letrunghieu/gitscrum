@@ -1,9 +1,9 @@
 #/!bin/sh
 
-# set this to workaround expr problems in shFlags on freebsd
+# Set this to workaround expr problems in shFlags on freebsd
 if uname -s | egrep -iq 'bsd'; then export EXPR_COMPAT=1; fi
 
-# enable debug mode
+# Enable debug mode
 if [ "$DEBUG" = "yes" ]; then
     set -x
 fi
@@ -18,12 +18,63 @@ usage() {
 }
 
 main() {
-    echo $#
     # If the number of arguments is less than one, show the usage
     if [ $# -lt 1 ]; then
         usage
         exit 1
     fi
+
+    # Load common functionality
+    . "$GITSCRUM_DIR/gitscrum-common"
+
+    # This environmental variable fixes non-POSIX getopt style argument
+    # parsing, effectively breaking git-flow subcommand parsing on several
+    # Linux platforms.
+    export POSIXLY_CORRECT=1
+
+    # Parse the command line arguments with shFlags project
+    . "$GITSCRUM_DIR/shflags/shflags"
+    FLAGS_PARENT="git scrum"
+
+    # Allow user to request git action logging
+    DEFINE_boolean show_commands false 'show actions taken (git commands)' g
+
+    # Do actual parsing
+    FLAGS "$@" || exit $?
+    eval set -- "${FLAGS_ARGV}"
+
+    # Sanity checks
+    SUBCOMMAND="$1"; shift
+
+    if [ ! -e "$GITSCRUM_DIR/git-scrum-$SUBCOMMAND" ]; then
+        usage
+        exit 1
+    fi
+
+    # Run command
+    . "$GITSCRUM_DIR/git-scrum-$SUBCOMMAND"
+    FLAGS_PARENT="git scrum $SUBCOMMAND"
+
+    # Test if the first argument is a flag (i.e. starts with '-')
+    # in that case, we interpret this arg as a flag for the default
+    # command
+    SUBACTION="default"
+    if [ "$1" != "" ] && { ! echo "$1" | grep -q "^-"; } then
+        SUBACTION="$1"; shift
+    fi
+    if ! type "cmd_$SUBACTION" >/dev/null 2>&1; then
+        warn "Unknown subcommand: '$SUBACTION'"
+        usage
+        exit 1
+    fi
+
+    # run the specified action
+    if [ $SUBACTION != "help" ] && [ $SUBCOMMAND != "init" ] ; then
+        init
+    fi
+
+    cmd_$SUBACTION "$@"
+
 }
 
-main "@0"
+main "$@"
