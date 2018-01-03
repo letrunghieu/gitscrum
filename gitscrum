@@ -1,0 +1,29 @@
+#/!bin/sh
+
+# set this to workaround expr problems in shFlags on freebsd
+if uname -s | egrep -iq 'bsd'; then export EXPR_COMPAT=1; fi
+
+# enable debug mode
+if [ "$DEBUG" = "yes" ]; then
+    set -x
+fi
+
+# The sed expression here replaces all backslashes by forward slashes.
+# This helps our Windows users, while not bothering our Unix users.
+export GITSCRUM_DIR=$(dirname "$(echo "$0" | sed -e 's,\\,/,g')")
+
+usage() {
+    echo "usage: git flow <subcommand>"
+    echo
+}
+
+main() {
+    echo $#
+    # If the number of arguments is less than one, show the usage
+    if [ $# -lt 1 ]; then
+        usage
+        exit 1
+    fi
+}
+
+main "@0"
