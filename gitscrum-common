@@ -26,12 +26,25 @@ gitscrum_load_settings() {
 	export MASTER_BRANCH=$(echo master)
 	export ORIGIN=$(echo origin)
 	export STORY_PREFIX=$(echo feature/)
+	export SPRINT_PREFIX=$(echo sprint/)
+	export RELEASE_PREFIX=$(echo release/)
+	export HOTFIX_PREFIX=$(echo hotfix/)
 }
 
 #
 # Git specific common functionality
 #
 git_local_branches() { git branch --no-color | sed 's/^[* ] //'; }
+
+require_single_sprint_branch() {
+	local sprint_branches=$(echo "$(git_local_branches)" | grep "^$SPRINT_PREFIX")
+	local first_branch=$(echo ${sprint_branches} | head -n1)
+	echo $sprint_branches
+	echo ${#sprint_branches[@]}
+	first_branch=${first_branch#$SPRINT_PREFIX}
+	[ -z "$sprint_branches" ] || \
+		die "There is an existing sprint branch ($first_branch). Finish that one first."
+}
 
 #
 # Assertions for use in git-flow subcommands
@@ -42,3 +55,4 @@ require_git_repo() {
 		die "fatal: Not a git repository"
 	fi
 }
+

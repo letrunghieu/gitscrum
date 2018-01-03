@@ -76,6 +76,10 @@ cmd_list() {
     done
 }
 
+cmd_integrate() {
+    require_single_sprint_branch
+}
+
 cmd_help() {
     usage
     exit 0
